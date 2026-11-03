@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ハノイの塔 シミュレーター＆工作キット</title>
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root {
+    --ink: #2b2620; --paper: #faf6ec; --card: #fffdf7; --line: #d8c9a3;
+    --accent: #b3541e; --accent2: #2f5da3; --good: #2e7d32; --warn: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: sans-serif; background: var(--paper); color: var(--ink); line-height: 1.75; }
+  header { padding: 22px 16px 6px; text-align: center; }
+  header h1 { margin: 0 0 4px; font-size: 1.55rem; }
+  header p { margin: 0; color: #6b5d43; font-size: .92rem; }
+  main { max-width: 980px; margin: 0 auto; padding: 10px 14px 30px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 14px 0; }
+  h2 { margin: 0 0 8px; font-size: 1.15rem; border-left: 5px solid var(--accent); padding-left: 9px; }
+  h3 { margin: 14px 0 6px; font-size: 1rem; color: var(--accent2); }
+  p, li { font-size: .95rem; }
+  ul, ol { padding-left: 1.3em; margin: 6px 0; }
+  .note { background: #fdf3e0; border: 1px solid #ecd9ae; border-radius: 10px; padding: 9px 12px; font-size: .9rem; }
+  #stage { width: 100%; height: auto; display: block; border-radius: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #stage.glow { animation: stageGlow 1.6s ease-in-out 2; }
+  @keyframes stageGlow { 0%,100% { filter: none; } 50% { filter: drop-shadow(0 0 18px rgba(217,164,65,.85)); } }
+  .disk { cursor: grab; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 4px; }
+  .controls .spacer { flex: 1; }
+  button, .chipbtn {
+    font-size: .95rem; padding: 8px 14px; border-radius: 9px; border: 1px solid #b09b72;
+    background: #f3e9d2; color: var(--ink); cursor: pointer;
+  }
+  button[aria-pressed="true"] { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button.primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  button.warn { background: #f7e3e0; border-color: #d8a49e; }
+  button:disabled { opacity: .45; cursor: default; }
+  select { font-size: .95rem; padding: 7px 8px; border-radius: 8px; border: 1px solid #b09b72; background: #fffdf7; }
+  label.ctl { font-size: .9rem; color: #6b5d43; }
+  #status { font-size: 1rem; margin: 8px 0 0; }
+  #status b { font-size: 1.15rem; }
+  #message { min-height: 1.7em; margin: 2px 0 0; color: var(--accent2); font-size: .95rem; }
+  #message.done { color: var(--good); font-weight: 700; }
+  table.rec { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  table.rec th, table.rec td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; font-size: .95rem; }
+  table.rec th { background: #f3e9d2; }
+  table.rec td.best { color: var(--accent); font-weight: 700; }
+  .seq { font-size: 1.08rem; letter-spacing: .04em; }
+  .seq b { color: var(--accent); }
+  #cpagetabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  #cpreview { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 8px; }
+  #cpreview svg { width: 100%; height: auto; display: block; }
+  #cprintimg { display: none; margin-top: 12px; }
+  #cprintimg img { width: 100%; height: auto; border: 1px solid var(--line); }
+  #btnCMakeImg { background: var(--accent2); border-color: var(--accent2); color: #fff; margin-top: 10px; }
+  #cDownload { display: none; margin-top: 8px; font-size: 1rem; }
+  #boot-error { display: none; background: #fdecea; border: 1px solid #f0b8b2; color: #7a1d16; border-radius: 10px; padding: 10px 12px; margin: 14px; font-size: .92rem; }
+  footer { text-align: center; color: #8a7a58; font-size: .82rem; padding: 6px 12px 26px; }
+</style>
+</head>
+<body>
+<div id="boot-error">アプリの読み込みで問題が起きました。ページを再読み込みしてみてください。</div>
+<noscript><p style="text-align:center; padding:12px;">このアプリはJavaScriptで動きます。ブラウザの設定でJavaScriptを有効にしてください。</p></noscript>
+<header>
+  <h1>ハノイの塔 シミュレーター＆工作キット</h1>
+  <p>指でつかんで、本物みたいに動かせるハノイの塔。紙で作れる型紙つき ― ver.2026-11-03.1</p>
+</header>
+<main>
+<section id="intro">
+  <h2>はじめに</h2>
+  <p>ハノイの塔は、3本の柱と大きさの違う円盤を使うパズルです。円盤を1枚ずつ動かして、全部の円盤を別の柱へ移し替えます。ただし、<b>大きい円盤を小さい円盤の上に置くことはできません</b>。</p>
+  <p>このアプリは2部構成です。<b>第1部</b>はシミュレーター：円盤を指（マウス）で直接つかんで動かします。円盤はまず柱に沿って真上に抜け、それから手についてきます。柱の上で離すと、柱に沿って降りて積み重なります。<b>第2部</b>は、厚紙で実物を作るペーパークラフトキット（円盤6枚・柱・土台の型紙）です。</p>
+</section>
+
+<section id="sim">
+  <h2>第1部 シミュレーター</h2>
+  <svg id="stage" viewBox="0 0 920 600" role="img" aria-label="ハノイの塔のシミュレーター"></svg>
+  <div class="controls">
+    <label class="ctl" for="selN">円盤の枚数</label>
+    <select id="selN">
+      <option value="3">3枚</option>
+      <option value="4">4枚</option>
+      <option value="5" selected>5枚</option>
+      <option value="6">6枚</option>
+      <option value="7">7枚</option>
+      <option value="8">8枚</option>
+    </select>
+    <button id="btnUndo" type="button">↩ 取り消し</button>
+    <button id="btnReset" type="button" class="warn">最初から</button>
+    <span class="spacer"></span>
+    <button id="btnAuto" type="button" class="primary">▶ 最短手順を自動再生</button>
+    <label class="ctl" for="selSpeed">速さ</label>
+    <select id="selSpeed">
+      <option value="0.5">ゆっくり</option>
+      <option value="1" selected>ふつう</option>
+      <option value="2">速い</option>
+      <option value="3.5">とても速い</option>
+    </select>
+    <button id="btnSound" type="button" aria-pressed="true">🔔 音あり</button>
+  </div>
+  <p id="status"></p>
+  <p id="message"></p>
+  <div class="note">
+    <b>動かし方：</b>一番上の円盤をつかみ、そのまま真上に引き上げてから横へ運び、柱の上で離します。途中で関係ない場所で離すと、円盤は元の場所へ戻ります。大きい円盤は小さい円盤の上に置けません（置こうとすると円盤が揺れて、元の場所へ戻ります）。
+  </div>
+</section>
+
+<section id="record">
+  <h2>記録表 ― 数のきまりを見つけよう</h2>
+  <p>枚数を変えて遊ぶと、最短の手数（いちばん少ない移動回数）に、きれいなきまりがあることに気がつきます。</p>
+  <table class="rec" id="rectable">
+    <thead><tr><th>円盤の枚数 n</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr></thead>
+    <tbody>
+      <tr><th>最短の手数</th><td>1</td><td>3</td><td>7</td><td>15</td><td>31</td><td>63</td><td>127</td><td>255</td></tr>
+      <tr><th>あなたのベスト</th><td>―</td><td>―</td><td data-best="3">―</td><td data-best="4">―</td><td data-best="5">―</td><td data-best="6">―</td><td data-best="7">―</td><td data-best="8">―</td></tr>
+    </tbody>
+  </table>
+  <p class="seq">最短の手数のならび： <b>1, 3, 7, 15, 31, 63, 127, 255, …</b></p>
+  <h3>なぜ「2倍＋1」になるのか</h3>
+  <p>n枚の塔を移すときのことを考えます。いちばん大きな円盤を動かすには、その上の n−1 枚をまず別の柱へどけておかなければなりません（ここで n−1 枚分の最短手数）。次に大きな円盤を1回動かし、最後に n−1 枚をその上へ戻します（もう一度 n−1 枚分）。つまり最短手数は「<b>（n−1 枚の最短）×2 ＋ 1</b>」。1, 3, 7, 15, … と増えるのはこのためです。</p>
+  <p>このならびは、文字式で <b>2<sup>n</sup> − 1</b> と表せます。「前の数を2倍して1を足す」という繰り返しが、2のn乗という形に化けるのです。具体的な数で気づいたきまりを、文字を使って一般化する――数学のいちばん楽しいところです。</p>
+  <h3>ハノイの塔の伝説</h3>
+  <p>このパズルには有名な伝説があります。インドの寺院に64枚の黄金の円盤があり、僧侶たちが昼も夜も1秒に1枚ずつ移し替えていて、全部移し終えたとき世界が終わる、という話です。64枚の最短手数は 2<sup>64</sup> − 1 ＝ 18,446,744,073,709,551,615 回。1秒に1枚動かしても約5,850億年かかります。世界はまだまだ大丈夫そうです。</p>
+</section>
+
+<section id="kit">
+  <h2>第2部 ペーパークラフトキット（円盤6枚）</h2>
+  <p>厚紙で実物のハノイの塔を作る型紙です。円盤は授業で使った6枚、柱は紙で組む三角柱、土台に立てて使います。ページを選んで「印刷用画像を作る」を押すと、A4判・実際のサイズの画像（300dpi）ができます。その画像を写真と同じように印刷し、赤い線が5cmちょうどか確かめてから切り抜いてください。</p>
+  <div id="cpagetabs" role="group" aria-label="型紙ページの選択"></div>
+  <div id="cpreview"></div>
+  <button id="btnCMakeImg" type="button">このページの印刷用画像を作る</button>
+  <a id="cDownload" href="#" download>⬇ 印刷用画像を保存する</a>
+  <div id="cprintimg"></div>
+  <h3>作り方と遊び方（要点）</h3>
+  <ul>
+    <li><b>円盤：</b>型紙を厚紙に貼って切り抜き、中心の穴（直径12mm）を空けます。色分けしてあるので、大きさの順番が目で分かります。</li>
+    <li><b>柱：</b>三角柱の展開図を山折りして筒にし、のりしろで止めます。下のフラップを外側へ折り、土台（70mm角）の三角の目印に合わせて貼ります。ふたの三角を上に貼ると丈夫になります。</li>
+    <li><b>台の置き方：</b>土台3枚を、中心どうし約13cmの間隔で机に並べます。</li>
+    <li><b>遊び方：</b>シミュレーターと同じルールです。記録表（型紙5）に日付・枚数・回数を書いていくと、2<sup>n</sup> − 1 のきまりが自分の記録から見えてきます。</li>
+  </ul>
+</section>
+</main>
+<footer>
+  <p>ハノイの塔 シミュレーター＆工作キット ― 型紙・説明文はすべてこのキットのための書き下ろしです。</p>
+</footer>
+<script>
+"use strict";
+/* ================= シミュレーター：定数と状態 ================= */
+var PEG_X = [235, 460, 685], PEG_TOP = 188, BASE_Y = 488, DISK_H = 30;
+var CLEAR_BOTTOM = PEG_TOP - 16;            // 横移動できる高さ（円盤の底がこの値以下）
+var S = {
+  n: 5, pegs: [[], [], []], moves: 0, history: [], finished: false,
+  assisted: false, sound: true, anim: null, auto: null, speed: 1
+};
+function diskW(id){ return 208 - id * 17; }
+function diskColor(id){
+  var cols = ["#a8642f", "#b06e33", "#b97a38", "#c1863f", "#c89247", "#d09e50", "#d8ab5c", "#e0b76a"];
+  return cols[Math.min(id, cols.length - 1)];
+}
+function slotBottom(peg, idx){ return BASE_Y - idx * DISK_H; }
+function topDisk(peg){ var a = S.pegs[peg]; return a.length ? a[a.length - 1] : null; }
+function minMoves(n){ return Math.pow(2, n) - 1; }
+function genMoves(h, from, to, aux, out){
+  if (h === 0) return;
+  genMoves(h - 1, from, aux, to, out);
+  out.push({ disk: S.n - h, from: from, to: to });
+  genMoves(h - 1, aux, to, from, out);
+}
+function solveMoves(){ var out = []; genMoves(S.n, 0, 2, 1, out); return out; }
+/* ================= SVGシーン ================= */
+var svg = document.getElementById("stage");
+var NS = "http://www.w3.org/2000/svg";
+function el(name, attrs, parent){
+  var e = document.createElementNS(NS, name);
+  for (var k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+var layerShadow, layerScene, layerDisk, diskEls = {}, shadowEls = {};
+function grainPath(w, seed){
+  var y1 = 11 + (seed * 7) % 9, y2 = 20 + (seed * 5) % 7, s = "";
+  s = "M4 " + y1 + " C " + (w * 0.3) + " " + (y1 - 2.4) + ", " + (w * 0.62) + " " + (y1 + 2.2) + ", " + (w - 4) + " " + (y1 - 0.8);
+  s += " M4 " + y2 + " C " + (w * 0.35) + " " + (y2 + 2.2) + ", " + (w * 0.6) + " " + (y2 - 2.4) + ", " + (w - 4) + " " + (y2 + 0.6);
+  return s;
+}
+function buildScene(){
+  svg.innerHTML = "";
+  var defs = el("defs", {}, svg);
+  var bg = el("linearGradient", { id: "bgG", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+  el("stop", { offset: "0%", "stop-color": "#f2e8d2" }, bg);
+  el("stop", { offset: "100%", "stop-color": "#e0cda3" }, bg);
+  var boardTop = el("linearGradient", { id: "bdT", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+  el("stop", { offset: "0%", "stop-color": "#cfa15f" }, boardTop);
+  el("stop", { offset: "100%", "stop-color": "#bb8c4e" }, boardTop);
+  var pegG = el("linearGradient", { id: "pegG", x1: 0, y1: 0, x2: 1, y2: 0 }, defs);
+  el("stop", { offset: "0%", "stop-color": "#7d5326" }, pegG);
+  el("stop", { offset: "45%", "stop-color": "#c79f63" }, pegG);
+  el("stop", { offset: "100%", "stop-color": "#7d5326" }, pegG);
+  for (var i = 0; i < 8; i++){
+    var g = el("linearGradient", { id: "wd" + i, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    var c = diskColor(i);
+    el("stop", { offset: "0%", "stop-color": c }, g);
+    el("stop", { offset: "100%", "stop-color": shade(c, -26) }, g);
+  }
+  el("rect", { x: 0, y: 0, width: 920, height: 600, fill: "url(#bgG)" }, svg);
+  el("ellipse", { cx: 460, cy: 300, rx: 430, ry: 250, fill: "#f7efdb", opacity: 0.55 }, svg);
+  layerScene = el("g", {}, svg);
+  // 土台（上面と前面）
+  el("rect", { x: 70, y: 452, width: 780, height: 40, rx: 9, fill: "url(#bdT)", stroke: "#8a6132", "stroke-width": 1.2 }, layerScene);
+  el("rect", { x: 70, y: 488, width: 780, height: 30, rx: 9, fill: "#96682f" }, layerScene);
+  el("rect", { x: 70, y: 488, width: 780, height: 5, fill: "#7d5326", opacity: 0.55 }, layerScene);
+  // 柱
+  PEG_X.forEach(function(px){
+    el("ellipse", { cx: px, cy: 490, rx: 30, ry: 6.5, fill: "#8a6132", opacity: 0.5 }, layerScene);
+    el("rect", { x: px - 8, y: PEG_TOP, width: 16, height: BASE_Y - PEG_TOP + 4, rx: 8, fill: "url(#pegG)", stroke: "#6e4a20", "stroke-width": 0.8 }, layerScene);
+  });
+  layerShadow = el("g", {}, svg);
+  layerDisk = el("g", {}, svg);
+}
+function shade(hex, amt){
+  var n = parseInt(hex.slice(1), 16);
+  var r = Math.max(0, Math.min(255, (n >> 16) + amt)), g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt)), b = Math.max(0, Math.min(255, (n & 255) + amt));
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+}
+function buildDisks(){
+  layerDisk.innerHTML = ""; layerShadow.innerHTML = "";
+  diskEls = {}; shadowEls = {};
+  for (var id = 0; id < S.n; id++){
+    var w = diskW(id);
+    shadowEls[id] = el("ellipse", { cx: 0, cy: 491, rx: w * 0.52, ry: 8.5, fill: "#4a320f", opacity: 0.26 }, layerShadow);
+    var g = el("g", { "class": "disk", "data-disk": id }, layerDisk);
+    var tilt = el("g", {}, g);
+    el("rect", { x: 0, y: 4, width: w, height: DISK_H - 4, rx: 9, fill: "url(#wd" + id + ")", stroke: shade(diskColor(id), -52), "stroke-width": 1 }, tilt);
+    el("ellipse", { cx: w / 2, cy: 5, rx: w / 2 - 1, ry: 5.4, fill: shade(diskColor(id), 30) }, tilt);
+    el("path", { d: grainPath(w, id + 2), fill: "none", stroke: shade(diskColor(id), -38), "stroke-width": 1.1, opacity: 0.5 }, tilt);
+    el("ellipse", { cx: w / 2, cy: 5, rx: 9.5, ry: 3.4, fill: shade(diskColor(id), -58) }, tilt);
+    diskEls[id] = { g: g, tilt: tilt, cx: 0, bottom: 0, tiltA: 0 };
+    g.addEventListener("pointerdown", onDiskDown);
+  }
+  layoutAll(true);
+}
+function diskPosOf(id){
+  for (var p = 0; p < 3; p++){
+    var i = S.pegs[p].indexOf(id);
+    if (i >= 0) return { peg: p, idx: i };
+  }
+  return null;
+}
+function layoutAll(snap){
+  for (var id = 0; id < S.n; id++){
+    var pos = diskPosOf(id), de = diskEls[id];
+    var tx = PEG_X[pos.peg], tb = slotBottom(pos.peg, pos.idx);
+    if (snap || !de.cx){ de.cx = tx; de.bottom = tb; }
+    drawDisk(id);
+  }
+}
+function drawDisk(id){
+  var de = diskEls[id], w = diskW(id);
+  de.g.setAttribute("transform", "translate(" + (de.cx - w / 2) + " " + (de.bottom - DISK_H) + ")");
+  de.tilt.setAttribute("transform", "rotate(" + de.tiltA + " " + (w / 2) + " " + (DISK_H / 2) + ")");
+  var h = Math.max(0, BASE_Y - de.bottom);
+  var sh = shadowEls[id];
+  sh.setAttribute("cx", de.cx);
+  sh.setAttribute("opacity", Math.max(0.08, 0.27 - h * 0.00055));
+  sh.setAttribute("rx", w * (0.52 - Math.min(0.1, h * 0.00028)));
+}
+/* ================= 音（Web Audioで木の音を合成） ================= */
+var AC = null, masterGain = null;
+function ensureAudio(){
+  if (!AC){
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = AC.createGain(); masterGain.gain.value = 0.5; masterGain.connect(AC.destination);
+    } catch (e) { AC = null; }
+  }
+  if (AC && AC.state === "suspended") AC.resume();
+}
+function knock(id, vol, when){
+  if (!S.sound || !AC) return;
+  var t = AC.currentTime + (when || 0);
+  var o = AC.createOscillator(), g = AC.createGain();
+  o.type = "sine"; o.frequency.value = 128 + id * 15;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 0.14);
+  var nb = AC.createBuffer(1, 1323, AC.sampleRate), nd = nb.getChannelData(0);
+  for (var i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
+  var src = AC.createBufferSource(); src.buffer = nb;
+  var bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 760 + id * 70; bp.Q.value = 1.1;
+  var ng = AC.createGain();
+  ng.gain.setValueAtTime(vol * 0.8, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+  src.connect(bp); bp.connect(ng); ng.connect(masterGain);
+  src.start(t);
+}
+function chime(){
+  if (!S.sound || !AC) return;
+  [523.25, 783.99].forEach(function(f, i){
+    var t = AC.currentTime + i * 0.16;
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.055, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(masterGain);
+    o.start(t); o.stop(t + 0.55);
+  });
+}
+/* ================= 動きのエンジン（バネ物理） ================= */
+var lastT = 0;
+function springStep(de, dt, k, zeta){
+  var c = 2 * Math.sqrt(k) * zeta;
+  var ax = k * (de.tx - de.cx) - c * de.vx;
+  var ay = k * (de.ty - de.bottom) - c * de.vy;
+  de.vx += ax * dt; de.vy += ay * dt;
+  de.cx += de.vx * dt; de.bottom += de.vy * dt;
+  var ta = Math.max(-4.2, Math.min(4.2, de.vx * 0.0055));
+  de.tiltA += (ta - de.tiltA) * Math.min(1, dt * 10);
+}
+function animLoop(t){
+  requestAnimationFrame(animLoop);
+  var dt = Math.min(0.033, lastT ? (t - lastT) / 1000 : 0.016);
+  lastT = t;
+  var A = S.anim;
+  if (!A) return;
+  var de = diskEls[A.disk];
+  var steps = Math.max(1, Math.min(8, Math.ceil(dt * A.timeScale / (1 / 240))));
+  var sdt = dt / steps;
+  for (var i = 0; i < steps; i++) stepAnim(A, de, sdt * A.timeScale);
+  drawDisk(A.disk);
+}
+function setTarget(A, cx, bottom){ A.de.tx = cx; A.de.ty = bottom; }
+function stepAnim(A, de, dt){
+  var now = performance.now();
+  if (A.phase === "lift" || A.phase === "carry"){
+    A.k = 152 - A.disk * 6; A.zeta = 0.98;
+    if (A.phase === "lift"){
+      setTarget(A, PEG_X[A.from], Math.max(96, Math.min(A.slotFrom, A.ptrY + A.grabDY)));
+      if (de.bottom <= CLEAR_BOTTOM + 2){ A.phase = "carry"; }
+    } else {
+      setTarget(A, A.ptrX - A.grabDX, Math.max(92, Math.min(CLEAR_BOTTOM, A.ptrY + A.grabDY)));
+    }
+    springStep(de, dt, A.k, A.zeta);
+    return;
+  }
+  if (A.phase === "shake"){
+    A.k = 150; A.zeta = 0.9;
+    var el2 = (now - A.shakeT0) / 1000;
+    var amp = 6.5 * Math.max(0, 1 - el2 / 0.32);
+    setTarget(A, A.shakeCx + Math.sin(el2 * 52) * amp, A.shakeBottom);
+    springStep(de, dt, A.k, A.zeta);
+    if (el2 >= 0.34){ A.phase = "align"; A.destPeg = A.from; }
+    return;
+  }
+  if (A.phase === "rise"){
+    A.k = 120 - A.disk * 5; A.zeta = 0.95;
+    setTarget(A, PEG_X[A.from], CLEAR_BOTTOM - 4);
+    springStep(de, dt, A.k, A.zeta);
+    if (de.bottom <= CLEAR_BOTTOM + 3) A.phase = "align";
+    return;
+  }
+  if (A.phase === "align"){
+    A.k = 96; A.zeta = 0.92;
+    setTarget(A, PEG_X[A.destPeg], CLEAR_BOTTOM - 4);
+    springStep(de, dt, A.k, A.zeta);
+    if (Math.abs(de.cx - PEG_X[A.destPeg]) < 4 && Math.abs(de.vx) < 30) A.phase = "descend";
+    return;
+  }
+  if (A.phase === "descend"){
+    A.k = 74; A.zeta = 0.8;
+    var destLen = S.pegs[A.destPeg].length - (A.destPeg === A.from ? 1 : 0);
+    var slot = slotBottom(A.destPeg, destLen);
+    setTarget(A, PEG_X[A.destPeg], slot);
+    springStep(de, dt, A.k, A.zeta);
+    if (de.bottom > slot + 3.4){ de.bottom = slot + 3.4; de.vy = -Math.abs(de.vy) * 0.22; }
+    if (Math.abs(de.bottom - slot) < 0.9 && Math.abs(de.vy) < 16){
+      de.bottom = slot; de.vy = 0; de.cx = PEG_X[A.destPeg];
+      finishMove(A);
+    }
+    return;
+  }
+}
+function finishMove(A){
+  var id = A.disk, from = A.from, to = A.destPeg;
+  var de = diskEls[id];
+  de.tiltA = 0;
+  if (S.pegs[to].indexOf(id) < 0){
+    var fi = S.pegs[from].indexOf(id);
+    if (fi >= 0) S.pegs[from].splice(fi, 1);
+    S.pegs[to].push(id);
+  }
+  S.anim = null;
+  knock(id, 0.16);
+  if (to !== from && A.record !== false){
+    S.moves++;
+    S.history.push({ disk: id, from: from, to: to });
+  }
+  if (to !== from && !S.finished && (S.pegs[1].length === S.n || S.pegs[2].length === S.n)) onComplete();
+  updateStatus();
+  drawDisk(id);
+  if (S.auto) nextAutoMove();
+}
+/* ================= 指／マウス操作 ================= */
+var activePointer = null;
+function toSVG(evt){
+  var p = svg.createSVGPoint();
+  p.x = evt.clientX; p.y = evt.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function onDiskDown(evt){
+  ensureAudio();
+  if (S.anim || S.auto) return;
+  var id = +evt.currentTarget.getAttribute("data-disk");
+  var pos = diskPosOf(id);
+  if (!pos || topDisk(pos.peg) !== id) return;
+  evt.preventDefault();
+  var pt = toSVG(evt);
+  var de = diskEls[id];
+  de.vx = 0; de.vy = 0; de.tx = de.cx; de.ty = de.bottom;
+  S.anim = {
+    disk: id, de: de, from: pos.peg, destPeg: pos.peg, phase: "lift",
+    ptrX: pt.x, ptrY: pt.y, grabDX: pt.x - de.cx, grabDY: de.bottom - pt.y,
+    slotFrom: slotBottom(pos.peg, pos.idx), timeScale: 1, manual: true
+  };
+  activePointer = evt.pointerId;
+  try { svg.setPointerCapture(evt.pointerId); } catch (e) {}
+}
+svg.addEventListener("pointermove", function(evt){
+  var A = S.anim;
+  if (!A || !A.manual || evt.pointerId !== activePointer) return;
+  var pt = toSVG(evt);
+  A.ptrX = pt.x; A.ptrY = pt.y;
+});
+function endDrag(evt){
+  var A = S.anim;
+  if (!A || !A.manual || evt.pointerId !== activePointer) return;
+  activePointer = null;
+  var de = A.de;
+  var best = 0, bd = 1e9;
+  for (var p = 0; p < 3; p++){ var d = Math.abs(de.cx - PEG_X[p]); if (d < bd){ bd = d; best = p; } }
+  if (bd < 84){
+    var t = topDisk(best);
+    if (t === null || t < A.disk){ A.destPeg = best; A.phase = "align"; return; }
+    A.shakeCx = de.cx; A.shakeBottom = de.bottom; A.shakeT0 = performance.now();
+    A.phase = "shake";
+    knock(A.disk, 0.07);
+    setMessage("大きい円盤は小さい円盤の上に置けません。");
+    return;
+  }
+  A.destPeg = A.from; A.phase = "align";
+}
+svg.addEventListener("pointerup", endDrag);
+svg.addEventListener("pointercancel", endDrag);
+/* ================= 自動化された移動（取り消し・自動再生） ================= */
+function scriptedMove(disk, from, to, timeScale, manualFlag, record){
+  var de = diskEls[disk];
+  de.vx = 0; de.vy = 0; de.tx = de.cx; de.ty = de.bottom;
+  S.anim = { disk: disk, de: de, from: from, destPeg: to, phase: "rise", timeScale: timeScale, manual: !!manualFlag, record: record };
+}
+function nextAutoMove(){
+  var A = S.auto;
+  if (!A) return;
+  if (A.idx >= A.list.length){ S.auto = null; updateAutoBtn(); return; }
+  var mv = A.list[A.idx++];
+  setMessage("自動再生中… " + A.idx + " / " + A.list.length + " 手");
+  scriptedMove(mv.disk, mv.from, mv.to, S.speed, false);
+}
+function stopAuto(msg){
+  if (S.auto){ S.auto = null; updateAutoBtn(); if (msg) setMessage(msg); }
+}
+function updateAutoBtn(){
+  var b = document.getElementById("btnAuto");
+  b.textContent = S.auto ? "■ 自動再生を止める" : "▶ 最短手順を自動再生";
+}
+/* ================= 状態表示・記録 ================= */
+function setMessage(s, done){
+  var m = document.getElementById("message");
+  m.textContent = s || "";
+  m.className = done ? "done" : "";
+}
+function updateStatus(){
+  var st = document.getElementById("status");
+  st.innerHTML = "手数 <b>" + S.moves + "</b> 手　／　" + S.n + "枚の最短は <b>" + minMoves(S.n) + "</b> 手";
+  document.getElementById("btnUndo").disabled = !S.history.length || !!S.anim || !!S.auto;
+}
+function loadBests(){
+  try { return JSON.parse(window.localStorage.getItem("hanoi_best") || "{}"); } catch (e) { return {}; }
+}
+function renderBests(){
+  var bests = loadBests();
+  document.querySelectorAll("[data-best]").forEach(function(td){
+    var n = td.getAttribute("data-best");
+    td.textContent = bests[n] ? bests[n] + "手" : "―";
+    td.className = bests[n] ? "best" : "";
+  });
+}
+function onComplete(){
+  S.finished = true;
+  var mm = minMoves(S.n);
+  var msg = S.moves === mm
+    ? "完成です！ 最短の " + mm + " 手でできました。"
+    : "完成です！ " + S.moves + " 手でした（最短は " + mm + " 手）。";
+  if (!S.assisted){
+    var bests = loadBests();
+    if (!bests[S.n] || S.moves < bests[S.n]){
+      bests[S.n] = S.moves;
+      try { window.localStorage.setItem("hanoi_best", JSON.stringify(bests)); } catch (e) {}
+      renderBests();
+      msg += " あなたのベストを記録しました。";
+    }
+  } else {
+    msg += "（自動再生を使ったので、ベスト記録には入りません）";
+  }
+  setMessage(msg, true);
+  svg.classList.remove("glow"); void svg.getBBox;
+  svg.classList.add("glow");
+  chime();
+}
+/* ================= 操作ボタン ================= */
+function resetGame(n){
+  stopAuto();
+  S.anim = null; activePointer = null;
+  if (n) S.n = n;
+  S.pegs = [[], [], []];
+  for (var id = 0; id < S.n; id++) S.pegs[0].push(id);
+  S.moves = 0; S.history = []; S.finished = false; S.assisted = false;
+  buildDisks();
+  updateStatus();
+  setMessage("");
+}
+document.getElementById("selN").addEventListener("change", function(){ resetGame(+this.value); });
+document.getElementById("btnReset").addEventListener("click", function(){ ensureAudio(); resetGame(); });
+document.getElementById("btnUndo").addEventListener("click", function(){
+  ensureAudio();
+  if (S.anim || S.auto || !S.history.length) return;
+  var last = S.history[S.history.length - 1];
+  if (topDisk(last.to) !== last.disk) return;
+  S.history.pop();
+  S.moves--;
+  S.finished = false;
+  setMessage("");
+  scriptedMove(last.disk, last.to, last.from, 2.2, false, false);
+});
+document.getElementById("btnAuto").addEventListener("click", function(){
+  ensureAudio();
+  if (S.auto){ stopAuto("自動再生を止めました。"); return; }
+  if (S.anim) return;
+  S.assisted = true;
+  S.auto = { list: solveMoves(), idx: 0 };
+  /* 現在の盤面からではなく、最初から見せる（再帰のパターンが見えるように） */
+  var keepN = S.n;
+  S.pegs = [[], [], []];
+  for (var id = 0; id < keepN; id++) S.pegs[0].push(id);
+  S.moves = 0; S.history = []; S.finished = false;
+  buildDisks(); updateStatus();
+  updateAutoBtn();
+  nextAutoMove();
+});
+document.getElementById("selSpeed").addEventListener("change", function(){ S.speed = +this.value; });
+document.getElementById("btnSound").addEventListener("click", function(){
+  S.sound = !S.sound;
+  this.setAttribute("aria-pressed", S.sound ? "true" : "false");
+  this.textContent = S.sound ? "🔔 音あり" : "🔕 音なし";
+  if (S.sound){ ensureAudio(); knock(S.n - 1, 0.12); }
+});
+/* ================= 初期化 ================= */
+function initSim(){
+  buildScene();
+  resetGame(5);
+  renderBests();
+  requestAnimationFrame(animLoop);
+  window.__hanoi = {
+    S: S, diskPosOf: diskPosOf, solveMoves: solveMoves, minMoves: minMoves,
+    diskXY: function(id){ var de = diskEls[id]; return { cx: de.cx, bottom: de.bottom }; },
+    setPegs: function(pegs, n){
+      stopAuto(); S.anim = null;
+      if (n){ S.n = n; document.getElementById("selN").value = String(n); }
+      S.pegs = pegs; S.moves = 0; S.history = []; S.finished = false; S.assisted = false;
+      buildDisks(); updateStatus();
+    }
+  };
+}
+/* ================= ペーパークラフトキット ================= */
+var CDISKS = [
+  { d: 120, col: "#c96f4a", name: "1ばん（大）" }, { d: 110, col: "#d9a441", name: "2ばん" },
+  { d: 100, col: "#7a9e43", name: "3ばん" }, { d: 90, col: "#4a90a4", name: "4ばん" },
+  { d: 80, col: "#5b6fb5", name: "5ばん" }, { d: 70, col: "#9c5b8f", name: "6ばん（小）" }
+];
+var CPAGES = [
+  { name: "型紙1 円盤（大）", w: 210, h: 297, tpl: true },
+  { name: "型紙2 円盤（中）", w: 210, h: 297, tpl: true },
+  { name: "型紙3 円盤（小）", w: 210, h: 297, tpl: true },
+  { name: "型紙4 柱と土台", w: 210, h: 297, tpl: true },
+  { name: "記録表", w: 210, h: 297, tpl: true },
+  { name: "説明書1 組み立て", w: 210, h: 297, tpl: false },
+  { name: "説明書2 遊び方と気づき", w: 210, h: 297, tpl: false }
+];
+var CNET = [];
+function creg(page, id, x, y, w, h, kind){ CNET.push({ page: page, id: id, x: x, y: y, w: w, h: h, kind: kind || "part" }); }
+function cesc(s){ return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function ctxt(x, y, s, size, fill, anchor, extra){
+  return '<text x="' + x + '" y="' + y + '" font-size="' + size + '" fill="' + fill + '" text-anchor="' + (anchor || "middle") + '" font-family="sans-serif" ' + (extra || "") + ">" + cesc(s) + "</text>";
+}
+function ccalLine(page, x, y){
+  creg(page, "cal", x, y, 0.4, 50, "cal");
+  var s = '<line x1="' + x + '" y1="' + y + '" x2="' + x + '" y2="' + (y + 50) + '" stroke="#d42a1e" stroke-width="0.5"/>';
+  s += '<line x1="' + (x - 2) + '" y1="' + y + '" x2="' + (x + 2) + '" y2="' + y + '" stroke="#d42a1e" stroke-width="0.5"/>';
+  s += '<line x1="' + (x - 2) + '" y1="' + (y + 50) + '" x2="' + (x + 2) + '" y2="' + (y + 50) + '" stroke="#d42a1e" stroke-width="0.5"/>';
+  s += '<text x="' + (x - 3.4) + '" y="' + (y + 25) + '" font-size="3.2" fill="#d42a1e" text-anchor="middle" font-family="sans-serif" transform="rotate(-90 ' + (x - 3.4) + " " + (y + 25) + ')">5cm</text>';
+  return s;
+}
+function cHead(page, title){
+  var P = CPAGES[page];
+  return ctxt(P.w / 2, 6.0, title, 4.1, "#333")
+       + (P.tpl ? ctxt(P.w / 2, 11.2, "100%（実際のサイズ）で印刷し、赤い線が5cmか確かめてください", 2.9, "#777") : "");
+}
+function diskPart(page, idx, cx, cy){
+  var D = CDISKS[idx], r = D.d / 2;
+  creg(page, "disk" + (idx + 1), cx - r, cy - r, D.d, D.d);
+  var s = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + D.col + '" stroke="#5a4632" stroke-width="0.4"/>';
+  s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 4) + '" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.45"/>';
+  s += '<circle cx="' + cx + '" cy="' + cy + '" r="6" fill="#ffffff" stroke="#5a4632" stroke-width="0.4"/>';
+  s += '<line x1="' + (cx - 9) + '" y1="' + cy + '" x2="' + (cx + 9) + '" y2="' + cy + '" stroke="#999" stroke-width="0.3"/>';
+  s += '<line x1="' + cx + '" y1="' + (cy - 9) + '" x2="' + cx + '" y2="' + (cy + 9) + '" stroke="#999" stroke-width="0.3"/>';
+  s += ctxt(cx, cy - r * 0.52, D.name, 7, "#ffffff", "middle", 'font-weight="700"');
+  s += ctxt(cx, cy + r * 0.66, "直径" + D.d + "mm", 5, "#ffffff");
+  s += ctxt(cx, cy + r + 8.5, "円盤 " + D.name + " ― 直径" + D.d + "mm（中心の穴 直径12mmを切り抜く）", 3.4, "#333");
+  return s;
+}
+function pegNet(page, ox, oy, label){
+  var pw = 26, ph = 80, tab = 10, flap = 9;
+  creg(page, "pegNet" + label, ox, oy, pw * 3 + tab, ph + flap);
+  var fill = "#e8dcbc", cut = "#1a1a1a", fold = "#3a6ad8";
+  var s = "";
+  for (var i = 0; i < 3; i++){
+    s += '<rect x="' + (ox + i * pw) + '" y="' + oy + '" width="' + pw + '" height="' + ph + '" fill="' + fill + '" stroke="' + cut + '" stroke-width="0.35"/>';
+    s += '<rect x="' + (ox + i * pw) + '" y="' + (oy + ph) + '" width="' + pw + '" height="' + flap + '" fill="#d9c9a3" stroke="' + cut + '" stroke-width="0.35"/>';
+    s += ctxt(ox + i * pw + pw / 2, oy + ph / 2, "柱" + label, 4.2, "#8a6f3c");
+  }
+  s += '<rect x="' + (ox + pw * 3) + '" y="' + oy + '" width="' + tab + '" height="' + ph + '" fill="#efe6cc" stroke="' + cut + '" stroke-width="0.35"/>';
+  [26, 52, 78].forEach(function(dx){
+    s += '<line x1="' + (ox + dx) + '" y1="' + oy + '" x2="' + (ox + dx) + '" y2="' + (oy + ph) + '" stroke="' + fold + '" stroke-width="0.3" stroke-dasharray="2 1.6"/>';
+  });
+  s += '<line x1="' + ox + '" y1="' + (oy + ph) + '" x2="' + (ox + pw * 3) + '" y2="' + (oy + ph) + '" stroke="' + fold + '" stroke-width="0.3" stroke-dasharray="2 1.6"/>';
+  s += ctxt(ox + (pw * 3 + tab) / 2, oy + ph + flap + 7, "柱" + label + "（三角柱・高さ80mm）", 3.2, "#333");
+  return s;
+}
+function basePlate(page, ox, oy, label){
+  creg(page, "plate" + label, ox, oy, 70, 70);
+  var s = '<rect x="' + ox + '" y="' + oy + '" width="70" height="70" fill="#d9c9a3" stroke="#1a1a1a" stroke-width="0.35"/>';
+  var cx = ox + 35, cy = oy + 35, r = 15;
+  var p1 = [cx, cy - r], p2 = [cx + r * 0.866, cy + r * 0.5], p3 = [cx - r * 0.866, cy + r * 0.5];
+  s += '<polygon points="' + p1[0] + "," + p1[1] + " " + p2[0] + "," + p2[1] + " " + p3[0] + "," + p3[1] + '" fill="none" stroke="#b3261e" stroke-width="0.4"/>';
+  s += ctxt(cx, oy + 10, "土台" + label, 4.2, "#7a5f30");
+  s += ctxt(cx, oy + 65, "赤い三角に柱を合わせる", 3.0, "#7a5f30");
+  return s;
+}
+function capPart(page, ox, oy, label){
+  creg(page, "cap" + label, ox, oy, 26, 22.5);
+  var s = '<polygon points="' + ox + "," + (oy + 22.5) + " " + (ox + 26) + "," + (oy + 22.5) + " " + (ox + 13) + "," + oy + '" fill="#e8dcbc" stroke="#1a1a1a" stroke-width="0.35"/>';
+  s += ctxt(ox + 13, oy + 17, "ふた", 3.2, "#8a6f3c");
+  return s;
+}
+function buildCraftPage(page){
+  var s = "";
+  if (page === 0){ s = cHead(0, "型紙1 ― 円盤（大）") + diskPart(0, 0, 105, 82) + diskPart(0, 3, 105, 205) + ccalLine(0, 188, 30); }
+  else if (page === 1){ s = cHead(1, "型紙2 ― 円盤（中）") + diskPart(1, 1, 105, 76) + diskPart(1, 4, 105, 190) + ccalLine(1, 188, 30); }
+  else if (page === 2){
+    s = cHead(2, "型紙3 ― 円盤（小）") + diskPart(2, 2, 105, 68) + diskPart(2, 5, 105, 168) + ccalLine(2, 188, 30);
+    s += ctxt(105, 232, "円盤の作り方", 4.2, "#2f5da3", "middle", 'font-weight="700"');
+    s += ctxt(105, 240, "型紙を厚紙に貼り、乾いてから外側の円を切り抜きます。", 3.4, "#333");
+    s += ctxt(105, 247, "中心の白い円（直径12mm）も切り抜き、柱が通る穴を空けます。", 3.4, "#333");
+    s += ctxt(105, 254, "切り口がささくれたら、目の細かい紙やすりで軽く整えると滑らかに動きます。", 3.4, "#333");
+  }
+  else if (page === 3){
+    s = cHead(3, "型紙4 ― 柱と土台");
+    s += pegNet(3, 10, 14, "A") + pegNet(3, 100, 14, "B");
+    s += basePlate(3, 10, 114, "A") + basePlate(3, 90, 114, "B");
+    s += pegNet(3, 10, 186, "C") + basePlate(3, 100, 186, "C");
+    s += ctxt(105, 292.5, "青い破線は山折り、柱の下の帯は土台へ貼るフラップです", 3.1, "#666");
+    s += capPart(3, 102, 262, "A") + capPart(3, 132, 262, "B") + capPart(3, 162, 262, "C");
+    s += ccalLine(3, 196, 122);
+  }
+  else if (page === 4){ s = buildRecordSheet(); }
+  else if (page === 5){ s = buildCManual1(); }
+  else { s = buildCManual2(); }
+  var P = CPAGES[page];
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + P.w + " " + P.h + '" width="' + P.w + 'mm" height="' + P.h + 'mm">'
+       + '<rect x="0" y="0" width="' + P.w + '" height="' + P.h + '" fill="#ffffff"/>' + s + "</svg>";
+}
+function buildRecordSheet(){
+  var s = ctxt(105, 14, "ハノイの塔 記録表", 5.4, "#26262a", "middle", 'font-weight="700"');
+  s += '<line x1="12" y1="18.5" x2="198" y2="18.5" stroke="#b3541e" stroke-width="0.6"/>';
+  creg(4, "table", 14, 24, 182, 125);
+  creg(4, "cal", 14, 280, 50, 0.4, "cal");
+  s += '<line x1="14" y1="280" x2="64" y2="280" stroke="#d42a1e" stroke-width="0.5"/>';
+  s += '<line x1="14" y1="278" x2="14" y2="282" stroke="#d42a1e" stroke-width="0.5"/>';
+  s += '<line x1="64" y1="278" x2="64" y2="282" stroke="#d42a1e" stroke-width="0.5"/>';
+  s += ctxt(39, 276.5, "5cm", 3.2, "#d42a1e");
+  var cols = [14, 48, 70, 104, 134, 164, 196], heads = ["日付", "枚数", "かかった回数", "最短", "ちがい", "メモ"];
+  var y0 = 24, rh = 12.5;
+  for (var r = 0; r <= 10; r++){
+    var y = y0 + r * rh;
+    s += '<line x1="14" y1="' + y + '" x2="196" y2="' + y + '" stroke="#8a7a58" stroke-width="0.3"/>';
+  }
+  cols.forEach(function(x){ s += '<line x1="' + x + '" y1="' + y0 + '" x2="' + x + '" y2="' + (y0 + 10 * rh) + '" stroke="#8a7a58" stroke-width="0.3"/>'; });
+  heads.forEach(function(h, i){ s += ctxt((cols[i] + cols[i + 1]) / 2, y0 + 8.6, h, 3.8, "#333"); });
+  var y = y0 + 10 * rh + 14;
+  s += ctxt(14, y, "最短の手数のならび", 4.6, "#2f5da3", "start", 'font-weight="700"'); y += 9;
+  s += ctxt(14, y, "枚数：　1　　　2　　　3　　　4　　　5　　　6　　　7　　　8", 4.0, "#2b2620", "start"); y += 7.5;
+  s += ctxt(14, y, "最短：　1　　　3　　　7　　 15　 　31　 　63　 127　 255", 4.0, "#2b2620", "start"); y += 12;
+  s += ctxt(14, y, "考えてみよう", 4.6, "#2f5da3", "start", 'font-weight="700"'); y += 9;
+  ["・最短の手数は、枚数が1枚増えるごとにどのように増えていくかな？",
+   "・「前の数の2倍＋1」になっているかな？ 自分の記録で確かめてみよう。",
+   "・9枚では何手？ 10枚では？ 式で書くとどうなる？",
+   "・大きな円盤を動かす前に、その上の円盤はどこへ行っていないといけないかな？"].forEach(function(ln){
+    s += ctxt(14, y, ln, 3.8, "#2b2620", "start"); y += 7;
+  });
+  return s;
+}
+function textPageC(title, blocks){
+  var s = ctxt(105, 14, title, 5.2, "#26262a", "middle", 'font-weight="700"');
+  s += '<line x1="12" y1="18" x2="198" y2="18" stroke="#b3541e" stroke-width="0.6"/>';
+  var y = 27;
+  blocks.forEach(function(b){
+    if (b.t === "h"){ s += ctxt(12, y, b.s, 4.6, "#2f5da3", "start", 'font-weight="700"'); y += 8.4; }
+    else { b.lines.forEach(function(ln){ s += ctxt(14, y, ln, 3.9, "#2b2620", "start"); y += 5.9; }); y += 2.6; }
+  });
+  return s;
+}
+function buildCManual1(){
+  return textPageC("説明書 1／2 ― 組み立て", [
+    { t: "h", s: "用意するもの" },
+    { t: "p", lines: ["・印刷した型紙（型紙1〜4）　・厚紙 0.5〜1mm　・ハサミ、カッター", "・スティックのり、木工用接着剤　・定規　・目打ちや竹串（穴空け用）"] },
+    { t: "h", s: "円盤（6枚）" },
+    { t: "p", lines: ["1. 型紙を厚紙に貼り、よく乾かしてから外側の円を切り抜く。", "2. 中心の白い円（直径12mm）を切り抜く。カッターで少しずつ切るか、", "　 目打ちで穴を広げるときれいに空く。", "3. 色の順番（1ばんが最大）を確認する。"] },
+    { t: "h", s: "柱（三角柱）×3" },
+    { t: "p", lines: ["1. 柱の展開図を厚紙に貼って切り抜く（のりしろの帯まで一緒に）。", "2. 青い破線を山折りにして三角柱の形にし、のりしろで筒を止める。", "3. 下のフラップ（帯）を外側へ折る。", "4. 土台の赤い三角の目印に柱の位置を合わせ、フラップを土台に貼る。", "5. 三角の「ふた」を柱の上に貼ると、口が開かず丈夫になる。"] },
+    { t: "h", s: "置き方" },
+    { t: "p", lines: ["・土台3枚を、中心どうし約13cmの間隔で一直線に並べる。", "・机が滑る場合は、土台の裏に両面テープを小さく貼ると安定する。"] }
+  ]);
+}
+function buildCManual2(){
+  return textPageC("説明書 2／2 ― 遊び方と気づき", [
+    { t: "h", s: "ルール" },
+    { t: "p", lines: ["・円盤は1回に1枚だけ動かせる。動かせるのは各柱の一番上の円盤だけ。", "・大きい円盤を小さい円盤の上に置くことはできない。", "・全部の円盤を別の柱へ移し替えられたら完成。"] },
+    { t: "h", s: "記録のつけ方" },
+    { t: "p", lines: ["・記録表（型紙5）に、日付・枚数・かかった回数を書く。", "・同じ枚数で繰り返し挑戦すると、回数が減っていくのが分かる。", "・最短に届いたら、表の「ちがい」が0になる。"] },
+    { t: "h", s: "2ⁿ − 1 への問いかけ" },
+    { t: "p", lines: ["・枚数が1枚増えると、最短の手数はどう増える？（前の数の2倍＋1）", "・なぜ2倍＋1なのか：大きな円盤を動かす前に、上の全部をどけて、", "　 動かした後にまた戻すから。", "・このならびを式で書くと 2ⁿ − 1。10枚なら1023手、", "　 伝説の64枚では 18,446,744,073,709,551,615 手になる。"] },
+    { t: "h", s: "コツ" },
+    { t: "p", lines: ["・いちばん小さい円盤は、1手おきに動くことに気づくかな？", "・迷ったら、まず小さい円盤を「次の柱」へ動かすことから始める。"] }
+  ]);
+}
+/* 検証用：キットの幾何チェック */
+function runChecks(){
+  var res = { ok: true, msgs: [] };
+  function chk(cond, msg){ res.msgs.push((cond ? "OK " : "NG ") + msg); if (!cond) res.ok = false; }
+  CDISKS.forEach(function(D, i){ chk(D.d === 120 - i * 10, "円盤" + (i + 1) + " 直径" + D.d + "mm"); });
+  for (var p = 0; p < CPAGES.length; p++){
+    CNET = CNET.filter(function(e){ return e.page !== p; });
+    buildCraftPage(p);
+    var P = CPAGES[p], es = CNET.filter(function(e){ return e.page === p; });
+    if (P.tpl) chk(es.length > 0, "page" + (p + 1) + " 部品あり");
+    es.forEach(function(e){
+      chk(e.x >= 6 && e.y >= 6 && e.x + e.w <= P.w - 4 && e.y + e.h <= P.h - 6, "page" + (p + 1) + " " + e.id + " ページ内");
+    });
+    for (var i = 0; i < es.length; i++) for (var j = i + 1; j < es.length; j++){
+      var a = es[i], b = es[j];
+      var ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+      var oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      if (ox > 0 && oy > 0 && ox * oy > 2) chk(false, "page" + (p + 1) + " 重なり " + a.id + " × " + b.id);
+    }
+    var cal = es.filter(function(e){ return e.kind === "cal"; });
+    if (P.tpl) chk(cal.length === 1 && Math.abs(Math.max(cal[0].w, cal[0].h) - 50) < 0.01, "page" + (p + 1) + " 較正線50mm");
+  }
+  var l1 = solveMovesAbstract(3), l2 = solveMovesAbstract(6);
+  chk(l1 === 7 && l2 === 63, "solover手数 3枚=7 / 6枚=63");
+  return res;
+}
+function solveMovesAbstract(n){
+  var save = S.n; S.n = n;
+  var out = []; genMoves(n, 0, 2, 1, out);
+  S.n = save;
+  /* ルール検証：抽象シミュレーションで全手が合法で完成すること */
+  var pegs = [[], [], []];
+  for (var id = 0; id < n; id++) pegs[0].push(id);
+  for (var i = 0; i < out.length; i++){
+    var mv = out[i];
+    if (pegs[mv.from][pegs[mv.from].length - 1] !== mv.disk) return -1;
+    var t = pegs[mv.to].length ? pegs[mv.to][pegs[mv.to].length - 1] : null;
+    if (t !== null && t > mv.disk) return -1;
+    pegs[mv.from].pop(); pegs[mv.to].push(mv.disk);
+  }
+  return pegs[2].length === n ? out.length : -1;
+}
+/* ================= キットの画面制御 ================= */
+var curCPage = 0;
+function renderCTabs(){
+  var box = document.getElementById("cpagetabs"); box.innerHTML = "";
+  CPAGES.forEach(function(P, i){
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = P.name;
+    b.setAttribute("aria-pressed", i === curCPage ? "true" : "false");
+    b.addEventListener("click", function(){ curCPage = i; renderCTabs(); renderCPreview(); hideCPrint(); });
+    box.appendChild(b);
+  });
+}
+function renderCPreview(){ document.getElementById("cpreview").innerHTML = buildCraftPage(curCPage); }
+function hideCPrint(){
+  document.getElementById("cprintimg").style.display = "none";
+  document.getElementById("cDownload").style.display = "none";
+}
+function cPageToPNG(pageIdx){
+  return new Promise(function(resolve, reject){
+    var P = CPAGES[pageIdx];
+    var svgStr = buildCraftPage(pageIdx);
+    var url = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" }));
+    var img = new Image();
+    img.onload = function(){
+      try {
+        var scale = 300 / 25.4, cv = document.createElement("canvas");
+        cv.width = Math.round(P.w * scale); cv.height = Math.round(P.h * scale);
+        var cx = cv.getContext("2d");
+        cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, cv.width, cv.height);
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        resolve(cv.toDataURL("image/png"));
+      } catch (e) { reject(e); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("svg load failed")); };
+    img.src = url;
+  });
+}
+function initKit(){
+  renderCTabs(); renderCPreview();
+  document.getElementById("btnCMakeImg").addEventListener("click", function(){
+    var btn = this; btn.disabled = true; btn.textContent = "画像を作っています…";
+    cPageToPNG(curCPage).then(function(dataURL){
+      var box = document.getElementById("cprintimg");
+      box.innerHTML = "";
+      var img = document.createElement("img");
+      img.src = dataURL; img.alt = CPAGES[curCPage].name + "の印刷用画像";
+      box.appendChild(img); box.style.display = "block";
+      var lnk = document.getElementById("cDownload");
+      lnk.href = dataURL; lnk.download = "hanoi-kit-" + (curCPage + 1) + ".png";
+      lnk.style.display = "block";
+      btn.disabled = false; btn.textContent = "このページの印刷用画像を作る";
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = "このページの印刷用画像を作る";
+      document.getElementById("boot-error").style.display = "block";
+    });
+  });
+  window.__kit = { cpages: CPAGES, cdisks: CDISKS, buildCraftPage: buildCraftPage, cPageToPNG: cPageToPNG, runChecks: runChecks };
+}
+try { initSim(); initKit(); } catch (e) { document.getElementById("boot-error").style.display = "block"; if (window.console) console.error(e); }
+</script>
+</body>
+</html>
